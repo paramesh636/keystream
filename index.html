@@ -7,12 +7,19 @@
 </head>
 
 <style>
+  :root {
+    --theme-color: #4cc9f0;
+    --theme-glow: #76e0ff;
+    --theme-shadow: rgba(76, 201, 240, 0.6);
+    --theme-shadow-strong: rgba(76, 201, 240, 1);
+    --theme-gradient-start: #0a0f2a;
+    --theme-gradient-end: #0a1f4a;
+  }
   html, body {
     overflow: hidden;
     margin: 0;
     padding: 0;
     border-radius: 16px;
-    background: rgba(10, 15, 58, 0.8);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
@@ -21,13 +28,18 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(to bottom, #0A0F1A, #0A0F3A);
+    border-radius: 16px;
+    background: transparent;
+    color: var(--theme-color);
+    transition: background 0.6s ease;
   }
 
   canvas {
     background: #000009;
     border-radius: 16px;
-    box-shadow: 0 0 10px skyblue;
+    box-shadow: 0 0 10px var(--theme-color);
+    transition: box-shadow 0.4s ease;
+
   }
 
   body::before{
@@ -35,6 +47,7 @@
     position: absolute;
     inset: 0;
     border-radius: inherit;
+    background: linear-gradient(to bottom, var(--theme-gradient-start), var(--theme-gradient-end));
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
     pointer-events: none;
     z-index: -2;
@@ -53,24 +66,24 @@
     -webkit-app-region: drag;
   }
 
-  .icon-btn {
+  .icon-btn, .selector {
     pointer-events: auto;
     font-family: monospace;
     font-size: 16px;
-    color: skyblue;
+    color: var(--theme-color);
+    border: 1px solid var(--theme-color);
+    box-shadow: 0 0 8px var(--theme-shadow);
     background: rgba(0,0,0,0.4);
-    border: 1px solid skyblue;
     border-radius: 8px;
     padding: 6px 10px;
     cursor: pointer;
-    box-shadow: 0 0 8px rgba(135,206,250,0.6);
     transition: all 0.2s ease;
     user-select: none;
     -webkit-app-region: no-drag;
   }
 
-  .icon-btn:hover {
-    box-shadow: 0 0 12px rgba(135,206,250,1);
+  .icon-btn:hover, .selector:hover {
+    box-shadow: 0 0 12px var(--theme-shadow-strong);
   }
 
   .muted {
@@ -84,6 +97,18 @@
     <div class="top-bar">
   <div style="display:flex; gap:8px;">
     <div id="muteBtn" class="icon-btn">🔊</div>
+    <select id="colorSelect" class="selector">
+        <option value="#009fff">🔵</option>
+        <option value="#ff5555">🔴</option>
+        <option value="#55ff55">🟢</option>
+        <option value="#ffaa00">🟠</option>
+        <option value="#cc55ff">🟣</option>
+        <option value="#ffffff">⚪</option>
+    </select>
+    <select id="visModeSelect" class="selector">
+        <option value="bars">Bars</option>
+        <option value="circles">Circles</option>
+    </select>
   </div>
 
   <div style="display:flex; gap:8px;">
@@ -97,6 +122,56 @@
   <canvas id="vis"></canvas>
 
 <script>
+  const root = document.documentElement;
+    const colorSelect = document.getElementById('colorSelect');
+
+    function setThemeColor(color) {
+      root.style.setProperty('--theme-color', color);
+      const isWhite = color.toLowerCase() === '#ffffff' || color.toLowerCase() === 'white';
+      const glowColor = isWhite ? '#f0f8ff' : shadeColor(color, -0.1);
+      const shadowAlpha = isWhite ? 0.9 : 0.6;
+      const darkColor = isWhite ? '#1a1a2e' : shadeColor(color, -0.75);
+      const midColor  = isWhite ? '#2a2a4a' : shadeColor(color, -0.45);
+      root.style.setProperty('--theme-gradient-start', darkColor);
+      root.style.setProperty('--theme-gradient-end', midColor);
+      root.style.setProperty('--theme-glow', glowColor);
+      root.style.setProperty('--theme-shadow', hexToRgba(color, shadowAlpha));
+      root.style.setProperty('--theme-shadow-strong', hexToRgba(color, 1));
+      document.getElementById('muteBtn').style.color = color;
+    }
+
+    function shadeColor(color, percent) {
+      let hex = color.replace('#', '');
+      if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+      let r = parseInt(hex.substr(0,2), 16);
+      let g = parseInt(hex.substr(2,2), 16);
+      let b = parseInt(hex.substr(4,2), 16);
+      r = Math.floor(r * (1 + percent));
+      g = Math.floor(g * (1 + percent));
+      b = Math.floor(b * (1 + percent));
+      r = Math.max(0, Math.min(255, r));
+      g = Math.max(0, Math.min(255, g));
+      b = Math.max(0, Math.min(255, b));
+      return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+    }
+
+    function hexToRgba(hex, alpha = 1) {
+      hex = hex.replace('#', '');
+      const r = parseInt(hex.substr(0,2), 16);
+      const g = parseInt(hex.substr(2,2), 16);
+      const b = parseInt(hex.substr(4,2), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    colorSelect.addEventListener('change', () => {
+      setThemeColor(colorSelect.value);
+    });
+    setThemeColor(colorSelect.value);
+
+
+
+
+  //Visualization Start  
   const canvas = document.getElementById("vis");
   const ctx = canvas.getContext("2d");
 
@@ -115,6 +190,27 @@
   const TRAIL_LENGTH = 24;
   const TRAIL_FADE = 0.75;
   const keyLabels = new Array(barCount).fill(null);
+
+  //Circle Mode
+    const WAVE_SPEED = 2.5;
+    const MAX_RADIUS = 200;          
+    const rowGroups = [
+      keys.reduce((acc, k, i) => {
+        if ('1234567890'.includes(k)) acc.push(i);
+        return acc;
+      }, []),
+      keys.reduce((acc, k, i) => {
+        if ('abcdefghijklmnopqrstuvwxyz'.includes(k)) acc.push(i);
+        return acc;
+      }, []),
+      keys.reduce((acc, k, i) => {
+        if (!'1234567890abcdefghijklmnopqrstuvwxyz'.includes(k)) acc.push(i);
+        return acc;
+      }, [])
+    ];
+    const usedIndices = [...new Set(rowGroups.flat())];
+    const circleWaves = new Array(barCount).fill().map(() => []);
+
 
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   let muted = false;
@@ -161,81 +257,132 @@
     'y': 659.25, 'z': 698.46
   };
 
-  function animate() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    let x = startX;
+  let currentVisMode = 'bars';
+    const visModeSelect = document.getElementById('visModeSelect');
+    visModeSelect.addEventListener('change', () => {
+      currentVisMode = visModeSelect.value;
+    });
 
-    for (let i = 0; i < barCount; i++) {
-      const barX = x;
-      const barH = bars[i];
+  function drawVisualization() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const themeColor = hexToRgba(getComputedStyle(root).getPropertyValue('--theme-color').trim(), 0.7);
+      //const shadowcolor = hexToRgba(getComputedStyle(root).getPropertyValue('--theme-glow').trim(), 0.5);
+      if (currentVisMode === 'circles') {
+        const rowYs = [canvas.height * 0.25, canvas.height * 0.55, canvas.height * 0.85];
 
-      for (let t = 0; t < trails[i].length; t++) {
-        const h = trails[i][t];
-        const alpha = (t + 1) / trails[i].length * TRAIL_FADE;
-        ctx.fillStyle = `rgba(135,206,250,${alpha * 0.7})`;
-        ctx.fillRect(barX, barY + h - 2, barWidth, 4);
+        rowGroups.forEach((groupIndices, rowIdx) => {
+          const count = groupIndices.length;
+          if (count === 0) return;
+
+          const colSpacing = canvas.width / (count + 1);
+
+          groupIndices.forEach((index, col) => {
+            const posX = (col + 1) * colSpacing;
+            const posY = rowYs[rowIdx];
+
+            circleWaves[index] = circleWaves[index]
+              .map(r => r + WAVE_SPEED)
+              .filter(r => {
+                const alpha = Math.max(0, 1 - (r - 40) / (MAX_RADIUS - 40));
+                return alpha > 0.02;
+
+          });
+            circleWaves[index].forEach(radius => {
+              const alpha = Math.max(0, 1 - (radius - 40) / (MAX_RADIUS - 40));
+              ctx.beginPath();
+              ctx.arc(posX, posY, radius, 0, Math.PI * 2);
+              ctx.strokeStyle = hexToRgba(getComputedStyle(root).getPropertyValue('--theme-color').trim(), alpha);
+              ctx.lineWidth = 2.5 + alpha * 2;
+              ctx.stroke();
+            });
+        if (keyLabels[index]) {
+          const label = keyLabels[index];
+          ctx.font = "bold 13px monospace";
+          ctx.fillStyle = themeColor;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "bottom";
+          ctx.fillText(label.toUpperCase(), posX, posY);
+        }
+        });
+        });
+      } else if (currentVisMode === 'bars') {
+          let x = startX;
+
+          for (let i = 0; i < barCount; i++) {
+            const barX = x;
+            const barH = bars[i];
+
+            for (let t = 0; t < trails[i].length; t++) {
+              const h = trails[i][t];
+              const alpha = (t + 1) / trails[i].length * TRAIL_FADE;
+              ctx.fillStyle = themeColor;
+              ctx.fillRect(barX, barY + h - 2, barWidth, 4);
+            }
+
+            ctx.fillStyle = themeColor;
+            ctx.fillRect(barX, barY, barWidth, barH);
+
+            if (keyLabels[i]) {
+              ctx.font = "bold 13px monospace";
+              ctx.fillStyle = themeColor;
+              ctx.textAlign = "center";
+              ctx.textBaseline = "bottom";
+              ctx.shadowBlur = 8;
+              ctx.fillText(
+                keyLabels[i].toUpperCase(),
+                barX + barWidth / 2,
+                barY + barH - 25
+              );
+            }
+
+            trails[i].push(barH);
+            if (trails[i].length > TRAIL_LENGTH) trails[i].shift();
+            if (bars[i] < -0.5) bars[i] *= decay;
+
+            x += barWidth + gap;
+          }
+
       }
-
-      ctx.fillStyle = "skyblue";
-      ctx.shadowColor = "cyan";
-      ctx.shadowBlur = 15;
-      ctx.fillRect(barX, barY, barWidth, barH);
-
-      if (keyLabels[i]) {
-        ctx.font = "bold 13px monospace";
-        ctx.fillStyle = "lightblue";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "bottom";
-        ctx.shadowBlur = 8;
-        ctx.fillText(
-          keyLabels[i].toUpperCase(),
-          barX + barWidth / 2,
-          barY + barH - 25
-        );
-      }
-
-      trails[i].push(barH);
-      if (trails[i].length > TRAIL_LENGTH) trails[i].shift();
-      if (bars[i] < -0.5) bars[i] *= decay;
-
-      x += barWidth + gap;
-    }
-
-    requestAnimationFrame(animate);
   }
 
-  animate();
+    function animate() {
+      drawVisualization();
+      requestAnimationFrame(animate);
+    }
+
+    animate();
 
   window.addEventListener('keydown', e => {
-    const k = e.key.toLowerCase();
-    const index = keys.indexOf(k);
-    if (index === -1) return;
+      const k = e.key.toLowerCase();
+      const index = keys.indexOf(k);
+      if (index === -1) return;
 
-    bars[index] = maxHeight;
-    keyLabels[index] = k;
+      if (currentVisMode === 'circles') {
+        circleWaves[index].push(1);
+        keyLabels[index] = k;
+      } else {
+        bars[index] = maxHeight;
+        keyLabels[index] = k;                 
+      }
 
-    if (muted) return;
+      if (muted) return;
+      const freq = noteFrequencies[k] / 2;
+      if (!freq) return;
+      audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      const now = audioCtx.currentTime;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.3, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 1.6);
+    });
 
-    const freq = noteFrequencies[k];
-    if (!freq) return;
-
-    audioCtx.resume();
-
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.value = freq;
-
-    const now = audioCtx.currentTime;
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.5, now + 0.005);
-    gain.gain.linearRampToValueAtTime(0.0, now + 1.2);
-
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start(now);
-  });
 
   document.getElementById('muteBtn').addEventListener('click', () => {
     muted = !muted;
