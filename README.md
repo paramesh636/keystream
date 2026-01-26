@@ -13,17 +13,17 @@ An enjoyable typing visualizer tool that turns your keyboard into a piano.
 
 Ensure you have [Node.js](https://nodejs.org/) installed.
 
-bash
+```bash
 # Install dependencies
 npm install
-
+```
 
 ## Running the App
 
-bash
+```bash
 # Start the application
 npm start
-
+```
 ## Credits
 
 concept by ParameshRajan.
