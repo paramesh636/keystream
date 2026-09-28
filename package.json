@@ -18,10 +18,15 @@
     },
     "win": {
       "target": "appx",
-      "icon": "src/logo.png"
+      "icon": "build/icons/1024x1024.png"
     },
     "appx":{
-      
+      "displayName": "Keystream",
+      "publisherDisplayName": "Paramesh Rajan",
+      "identityName": "ParameshRajan.Keystream"
+    },
+    "toolsets":{
+      "winCodeSign": "1.1.0"
     },
     "mac": {
       "target": "dmg",
